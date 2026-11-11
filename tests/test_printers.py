@@ -27,7 +27,7 @@ def black_dots(rows: bytes, row_bytes: int, dot_bit: int) -> set[tuple[int, int]
     }
 
 
-def test_escpos_job_prints_only_the_marked_dot_and_cuts_after_every_copy():
+def test_escpos_job_prints_only_the_marked_dot_then_feeds_and_cuts_after_every_copy():
     job = printers.escpos_job(page_with_mark((576, 300)), copies=2)
 
     assert job[:2] == b"\x1b@"
@@ -42,9 +42,10 @@ def test_escpos_job_prints_only_the_marked_dot_and_cuts_after_every_copy():
         rows += one_copy[position + 8 : position + 8 + row_bytes * row_count]
         position += 8 + row_bytes * row_count
 
-    assert len(rows) == 72 * 300
+    # The blank rows after the page carry its end past the cutter, 120 dots from the head.
+    assert len(rows) // 72 - 300 == printers.ESCPOS_FEED_DOTS > 120
     assert black_dots(rows, row_bytes=72, dot_bit=1) == {MARK}  # ESC/POS: 1 prints
-    assert one_copy[position:] == b"\x1bd\x06\x1dV\x00"  # feed, then cut
+    assert one_copy[position:] == b"\x1dV\x00"  # cut
 
 
 def test_sideways_layout_turns_the_card_to_fill_the_paper_width():

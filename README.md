@@ -8,8 +8,6 @@ A thermal printer has no greys, so Cardpress does not print the card photo. It
 typesets the card again in black and white (name, cost, dithered art, type line,
 rules text, power/toughness) so the text stays readable.
 
-Nothing here has been printed on real hardware yet. See [Untested](#untested).
-
 ## Run
 
 Needs [uv](https://docs.astral.sh/uv/) and Python 3.11 or newer.
@@ -50,8 +48,11 @@ printer address. Settings are saved in `~/.config/cardpress/settings.json`.
 | `/dev/usb/lp0` | Straight to a USB printer through the kernel's `usblp` driver |
 | `cups://QueueName` | To a CUPS queue as a raw job (`lp -d QueueName -o raw`) |
 
-Each copy ends with a six-line feed and a cut, the same bytes
-[python-escpos](https://github.com/python-escpos/python-escpos) sends.
+Each copy ends with 20 mm of blank paper and a cut. The cutter sits about
+15 mm past the print head, so every piece comes out with about 15 mm blank
+above the card and 5 mm below it. If your printer cuts into the card or leaves
+too much paper below it, change `ESCPOS_FEED_DOTS` in
+`src/cardpress/printers.py` (8 dots per mm).
 
 ### USB permissions
 
@@ -63,6 +64,9 @@ sudo usermod -aG lp "$USER"    # then log out and back in
 
 If CUPS has already claimed the printer, `/dev/usb/lp0` may not exist. Use the
 `cups://` address instead, or remove the printer from CUPS.
+
+`/dev/usb/lp0` is also missing when the kernel cannot load `usblp`, which
+happens after a kernel update until you reboot.
 
 ## Search
 
@@ -94,11 +98,14 @@ command reference, so wrong polarity or row width fails there, not on paper.
 
 ## Untested
 
-- Printing on a real printer. Jobs were checked by decoding them and comparing
-  with the preview, and the bytes match python-escpos.
-- How much blank paper the six-line feed leaves before the cut.
-- The RP820 over USB, and `cups://` with a real CUPS queue (only checked that
-  `lp` gets the right arguments and bytes).
+The full-size card has been printed on an RP820 over USB (`/dev/usb/lp0`).
+Not yet tried:
+
+- The 20 mm feed before the cut. It replaces a feed that cut 12 mm into the
+  card, and is sized from measurements of that print.
+- The mini card on paper.
+- `tcp://`, and `cups://` with a real CUPS queue (only checked that `lp` gets
+  the right arguments and bytes).
 - `contrib/cardpress.service`.
 
 The fonts are DejaVu Sans, bundled under their own licence in

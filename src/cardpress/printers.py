@@ -14,9 +14,11 @@ from PIL import Image, ImageOps
 
 PAPER_DOTS = 576  # printable width of 80 mm paper at 203 DPI
 ESCPOS_FRAGMENT_ROWS = 256
-# Blank lines fed before the cut so the print clears the cutter. Six is what
-# python-escpos's cut() sends, the sequence reported working on the Rongta RP820.
-ESCPOS_FEED_LINES = 6
+# Blank rows printed after the card so its end clears the cutter. The cutter sits
+# about 15 mm (120 dots) past the print head on the Rongta RP820, measured from a
+# print; the rest is margin below the card. The same 15 mm of every piece comes
+# out blank above the card.
+ESCPOS_FEED_DOTS = 160
 
 
 @dataclass(frozen=True)
@@ -62,10 +64,13 @@ def compose(layout: Layout, card: Image.Image) -> Image.Image:
 
 def escpos_job(page: Image.Image, copies: int) -> bytes:
     """An ESC/POS job printing the page as a raster image, then cutting it off."""
+    # The feed before the cut is blank raster rows, not ESC d: the RP820 moved
+    # only about 3 mm for ESC d 6, and raster rows are always one dot each.
     # GS v 0 prints a dot for every 1 bit: the inverse of Pillow's mode "1".
     # Row padding is 0 after inverting, so it stays blank.
     bits = ImageOps.invert(page.convert("L")).convert("1", dither=Image.Dither.NONE).tobytes()
     row_bytes = -(-page.width // 8)
+    bits += bytes(row_bytes * ESCPOS_FEED_DOTS)
     fragment_bytes = row_bytes * ESCPOS_FRAGMENT_ROWS
 
     one_copy = bytearray()
@@ -73,7 +78,6 @@ def escpos_job(page: Image.Image, copies: int) -> bytes:
         fragment = bits[start : start + fragment_bytes]
         rows = len(fragment) // row_bytes
         one_copy += b"\x1dv0\x00" + row_bytes.to_bytes(2, "little") + rows.to_bytes(2, "little") + fragment
-    one_copy += b"\x1bd" + bytes([ESCPOS_FEED_LINES])  # ESC d n: feed n lines
     one_copy += b"\x1dV\x00"  # GS V 0: cut
 
     return b"\x1b@" + bytes(one_copy) * copies  # ESC @: reset the printer first
