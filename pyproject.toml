@@ -1,0 +1,22 @@
+[project]
+name = "cardpress"
+version = "0.1.0"
+description = "Search Scryfall and print Magic cards and tokens on a thermal printer."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "pillow>=10.1",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+cardpress = "cardpress.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.12.9,<0.13.0"]
+build-backend = "uv_build"

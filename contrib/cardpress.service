@@ -1,0 +1,15 @@
+# systemd user unit. Install with:
+#   uv tool install .
+#   cp contrib/cardpress.service ~/.config/systemd/user/
+#   systemctl --user enable --now cardpress
+[Unit]
+Description=Cardpress: print Magic cards and tokens on a thermal printer
+After=network-online.target
+
+[Service]
+# Add --host 0.0.0.0 to reach it from a phone. There is no login: anyone on the network can print.
+ExecStart=%h/.local/bin/cardpress --port 8765
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cardpress</title>
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
+    <script>
+      // Apply the saved theme before first paint so the page does not flash.
+      document.documentElement.dataset.theme = localStorage.getItem("theme") || "system"
+    </script>
+    <link rel="stylesheet" href="app.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true">
+      <defs>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></symbol>
+        <symbol id="i-printer" viewBox="0 0 24 24">
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" />
+          <rect x="6" y="14" width="12" height="8" rx="1" />
+        </symbol>
+        <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></symbol>
+        <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14" /></symbol>
+      </defs>
+    </svg>
+
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/">
+          <img src="logo.svg" width="28" height="28" alt="" />
+          <span>Cardpress</span>
+        </a>
+        <div class="topbar-actions">
+          <button class="printer-chip" id="open-settings" type="button" aria-haspopup="dialog">
+            <svg class="icon"><use href="#i-printer" /></svg>
+            <span class="printer-chip-label" id="printer-summary">Printer</span>
+            <span class="status-dot" id="printer-dot"></span>
+          </button>
+          <div class="pill-group" role="radiogroup" aria-label="Theme">
+            <label title="Match system">
+              <input type="radio" name="theme" value="system" aria-label="Match system theme" />
+              <span><svg class="icon"><use href="#i-monitor" /></svg></span>
+            </label>
+            <label title="Light">
+              <input type="radio" name="theme" value="light" aria-label="Light theme" />
+              <span><svg class="icon"><use href="#i-sun" /></svg></span>
+            </label>
+            <label title="Dark">
+              <input type="radio" name="theme" value="dark" aria-label="Dark theme" />
+              <span><svg class="icon"><use href="#i-moon" /></svg></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-header">
+        <h1>Print a card</h1>
+        <p>Search Scryfall, pick a token or card, and send it to the thermal printer.</p>
+      </section>
+
+      <form class="toolbar" id="search-form" role="search">
+        <label class="search-field">
+          <svg class="icon"><use href="#i-search" /></svg>
+          <input id="query" type="search" name="q" autocomplete="off" autofocus aria-label="Search Scryfall" />
+        </label>
+        <div class="pill-group" role="radiogroup" aria-label="Search in">
+          <label><input type="radio" name="kind" value="tokens" checked /><span>Tokens</span></label>
+          <label><input type="radio" name="kind" value="cards" /><span>Cards</span></label>
+          <label><input type="radio" name="kind" value="all" /><span>Everything</span></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+
+      <p class="result-count" id="result-count" role="status"></p>
+      <section class="card-grid" id="results" aria-label="Search results"></section>
+      <section class="notice" id="notice" hidden>
+        <h2 id="notice-title"></h2>
+        <p id="notice-text"></p>
+        <div class="chips" id="suggestions"></div>
+      </section>
+    </main>
+
+    <dialog class="dialog" id="card-dialog" aria-labelledby="card-title">
+      <header class="dialog-header">
+        <div>
+          <h2 id="card-title"></h2>
+          <p id="card-type"></p>
+          <p class="fine" id="card-set"></p>
+        </div>
+        <form method="dialog">
+          <button class="icon-btn" aria-label="Close"><svg class="icon"><use href="#i-x" /></svg></button>
+        </form>
+      </header>
+      <div class="previews">
+        <figure>
+          <div class="preview-well"><img class="card-image" id="card-image" alt="" /></div>
+          <figcaption>Card</figcaption>
+        </figure>
+        <figure>
+          <div class="preview-well" id="preview-well" data-state="loading">
+            <div class="paper-skeleton"></div>
+            <img class="paper" id="card-preview" alt="Print preview" />
+            <p class="preview-error">Preview unavailable</p>
+          </div>
+          <figcaption>As printed · <span id="preview-layout"></span></figcaption>
+        </figure>
+      </div>
+      <footer class="dialog-footer">
+        <p class="printer-line" id="printer-line">
+          <span id="printer-line-text"></span>
+          <button class="link" id="change-printer" type="button">Change</button>
+        </p>
+        <div class="print-controls">
+          <div class="stepper">
+            <button class="icon-btn" id="copies-less" type="button" aria-label="Fewer copies"><svg class="icon"><use href="#i-minus" /></svg></button>
+            <input id="copies" type="number" min="1" max="20" value="1" inputmode="numeric" aria-label="Copies" />
+            <button class="icon-btn" id="copies-more" type="button" aria-label="More copies"><svg class="icon"><use href="#i-plus" /></svg></button>
+          </div>
+          <button class="btn btn-primary" id="print" type="button">
+            <svg class="icon"><use href="#i-printer" /></svg>
+            <span id="print-label">Print</span>
+          </button>
+        </div>
+      </footer>
+    </dialog>
+
+    <dialog class="dialog dialog-narrow" id="settings-dialog" aria-labelledby="settings-title">
+      <form id="settings-form">
+        <header class="dialog-header">
+          <h2 id="settings-title">Printer</h2>
+          <button class="icon-btn" type="button" id="settings-close" aria-label="Close"><svg class="icon"><use href="#i-x" /></svg></button>
+        </header>
+        <div class="dialog-body">
+          <fieldset>
+            <legend>Card size</legend>
+            <div class="options" id="layout-options"></div>
+          </fieldset>
+          <label class="field">
+            <span>Printer address</span>
+            <input id="target" name="target" type="text" autocomplete="off" spellcheck="false" placeholder="/dev/usb/lp0" />
+            <small>A device such as <code>/dev/usb/lp0</code>, <code>tcp://192.168.1.50:9100</code> for a network printer, or <code>cups://QueueName</code> for a CUPS queue.</small>
+          </label>
+        </div>
+        <footer class="dialog-footer dialog-footer-end">
+          <button class="btn" type="button" id="settings-cancel">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div class="toasts" id="toasts" popover="manual" role="status"></div>
+  </body>
+</html>
